@@ -4,6 +4,7 @@ import simplejson "github.com/bitly/go-simplejson"
 import (
 	"errors"
 	"github.com/crowdmob/goamz/aws"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -76,9 +77,8 @@ func buildError(r *http.Response, jsonBody []byte) error {
 	return &ddbError
 }
 
-func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
-	data := strings.NewReader(query.String())
-	hreq, err := http.NewRequest("POST", s.Region.DynamoDBEndpoint+"/", data)
+func (s *Server) rawQueryServer(target string, reader io.Reader) ([]byte, error) {
+	hreq, err := http.NewRequest("POST", s.Region.DynamoDBEndpoint+"/", reader)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +118,11 @@ func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
+	data := strings.NewReader(query.String())
+	return s.rawQueryServer(target, data)
 }
 
 func target(name string) string {
