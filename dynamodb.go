@@ -3,7 +3,7 @@ package dynamodb
 import simplejson "github.com/bitly/go-simplejson"
 import (
 	"errors"
-	"github.com/crowdmob/goamz/aws"
+	"github.com/goamz/goamz/aws"
 	"io"
 	"io/ioutil"
 	"log"
@@ -20,20 +20,6 @@ type Server struct {
 func New(auth aws.Auth, region aws.Region) *Server {
 	return &Server{auth, region}
 }
-
-/*
-type Query struct {
-	Query string
-}
-*/
-
-/*
-func NewQuery(queryParts []string) *Query {
-	return &Query{
-		"{" + strings.Join(queryParts, ",") + "}",
-	}
-}
-*/
 
 // Specific error constants
 var ErrNotFound = errors.New("Item not found")
