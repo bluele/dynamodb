@@ -3,8 +3,6 @@ package dynamodb
 import (
 	"errors"
 	"fmt"
-	"io"
-	"strings"
 
 	simplejson "github.com/bitly/go-simplejson"
 )
@@ -58,8 +56,8 @@ func (t *Table) CountQuery(attributeComparisons []AttributeComparison) (int64, e
 	return itemCount, nil
 }
 
-func (t *Table) RawQueryTable(r io.Reader, target string) ([]map[string]*Attribute, *Key, error) {
-	jsonResponse, err := t.Server.rawQueryServer("DynamoDB_20120810."+target, r)
+func (t *Table) RawQueryTable(query string, target string) ([]map[string]*Attribute, *Key, error) {
+	jsonResponse, err := t.Server.rawQueryServer("DynamoDB_20120810."+target, query)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -99,7 +97,7 @@ func (t *Table) RawQueryTable(r io.Reader, target string) ([]map[string]*Attribu
 }
 
 func (t *Table) QueryTable(q *Query) ([]map[string]*Attribute, *Key, error) {
-	return t.RawQueryTable(strings.NewReader(q.String()), "Query")
+	return t.RawQueryTable(q.String(), "Query")
 }
 
 func RunQuery(q *Query, t *Table) ([]map[string]*Attribute, error) {

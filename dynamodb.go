@@ -4,7 +4,6 @@ import simplejson "github.com/bitly/go-simplejson"
 import (
 	"errors"
 	"github.com/goamz/goamz/aws"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,6 +20,10 @@ func New(auth aws.Auth, region aws.Region) *Server {
 	return &Server{auth, region}
 }
 
+const (
+	ProvisionedThroughputExceeded = "ProvisionedThroughputExceededException"
+)
+
 // Specific error constants
 var ErrNotFound = errors.New("Item not found")
 
@@ -36,18 +39,18 @@ func (e Error) Error() string {
 	return e.Code + ": " + e.Message
 }
 
-func buildError(r *http.Response, jsonBody []byte) error {
+func buildError(r *http.Response, jsonBody []byte) *Error {
 
 	ddbError := Error{
 		StatusCode: r.StatusCode,
 		Status:     r.Status,
 	}
-	// TODO return error if Unmarshal fails?
 
 	json, err := simplejson.NewJson(jsonBody)
 	if err != nil {
 		log.Printf("Failed to parse body as JSON")
-		return err
+		ddbError.Code = "Failed to parse body as JSON"
+		return &ddbError
 	}
 	ddbError.Message = json.Get("message").MustString()
 
@@ -63,7 +66,8 @@ func buildError(r *http.Response, jsonBody []byte) error {
 	return &ddbError
 }
 
-func (s *Server) rawQueryServer(target string, reader io.Reader) ([]byte, error) {
+func (s *Server) rawQueryServer(target string, query string, retryCount int) ([]byte, error) {
+	reader := strings.NewReader(query)
 	hreq, err := http.NewRequest("POST", s.Region.DynamoDBEndpoint+"/", reader)
 	if err != nil {
 		return nil, err
@@ -100,6 +104,12 @@ func (s *Server) rawQueryServer(target string, reader io.Reader) ([]byte, error)
 	// "A response code of 200 indicates the operation was successful."
 	if resp.StatusCode != 200 {
 		ddbErr := buildError(resp, body)
+		if ddbErr.Code == ProvisionedThroughputExceeded {
+			retryCount += 1
+			log.Printf("Retry query: %v.", query)
+			time.Sleep(retryCount * time.Second)
+			return s.rawQueryServer(target, query, retryCount)
+		}
 		return nil, ddbErr
 	}
 
@@ -107,8 +117,7 @@ func (s *Server) rawQueryServer(target string, reader io.Reader) ([]byte, error)
 }
 
 func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
-	data := strings.NewReader(query.String())
-	return s.rawQueryServer(target, data)
+	return s.rawQueryServer(target, query.String(), 0)
 }
 
 func target(name string) string {
