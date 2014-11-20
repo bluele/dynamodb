@@ -8,8 +8,8 @@ import (
 	simplejson "github.com/bitly/go-simplejson"
 )
 
-func (t *Table) FetchPartialResults(query *Query) ([]map[string]*Attribute, *Key, error) {
-	jsonResponse, err := t.Server.queryServer(target("Scan"), query)
+func (t *Table) FetchPartialResults(query *Query, isRetry bool) ([]map[string]*Attribute, *Key, error) {
+	jsonResponse, err := t.Server.queryServer(target("Scan"), query, isRetry)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -43,19 +43,19 @@ func (t *Table) FetchPartialResults(query *Query) ([]map[string]*Attribute, *Key
 	return results, lastEvaluatedKey, nil
 }
 
-func (t *Table) ScanPartial(attributeComparisons []AttributeComparison, exclusiveStartKey *Key) ([]map[string]*Attribute, *Key, error) {
-	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, 0, 0, 0)
+func (t *Table) ScanPartial(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, isRetry bool) ([]map[string]*Attribute, *Key, error) {
+	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, 0, 0, 0, isRetry)
 }
 
-func (t *Table) ScanPartialLimit(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, limit int64) ([]map[string]*Attribute, *Key, error) {
-	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, 0, 0, limit)
+func (t *Table) ScanPartialLimit(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, limit int64, isRetry bool) ([]map[string]*Attribute, *Key, error) {
+	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, 0, 0, limit, isRetry)
 }
 
-func (t *Table) ParallelScanPartial(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, segment, totalSegments int) ([]map[string]*Attribute, *Key, error) {
-	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, segment, totalSegments, 0)
+func (t *Table) ParallelScanPartial(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, segment, totalSegments int, isRetry bool) ([]map[string]*Attribute, *Key, error) {
+	return t.ParallelScanPartialLimit(attributeComparisons, exclusiveStartKey, segment, totalSegments, 0, isRetry)
 }
 
-func (t *Table) ParallelScanPartialLimit(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, segment, totalSegments int, limit int64) ([]map[string]*Attribute, *Key, error) {
+func (t *Table) ParallelScanPartialLimit(attributeComparisons []AttributeComparison, exclusiveStartKey *Key, segment, totalSegments int, limit int64, isRetry bool) ([]map[string]*Attribute, *Key, error) {
 	q := NewQuery(t)
 	q.AddScanFilter(attributeComparisons)
 	if exclusiveStartKey != nil {
@@ -67,25 +67,25 @@ func (t *Table) ParallelScanPartialLimit(attributeComparisons []AttributeCompari
 	if limit > 0 {
 		q.AddLimit(limit)
 	}
-	return t.FetchPartialResults(q)
+	return t.FetchPartialResults(q, isRetry)
 }
 
-func (t *Table) FetchResults(query *Query) ([]map[string]*Attribute, error) {
-	results, _, err := t.FetchPartialResults(query)
+func (t *Table) FetchResults(query *Query, isRetry bool) ([]map[string]*Attribute, error) {
+	results, _, err := t.FetchPartialResults(query, isRetry)
 	return results, err
 }
 
-func (t *Table) Scan(attributeComparisons []AttributeComparison) ([]map[string]*Attribute, error) {
+func (t *Table) Scan(attributeComparisons []AttributeComparison, isRetry bool) ([]map[string]*Attribute, error) {
 	q := NewQuery(t)
 	q.AddScanFilter(attributeComparisons)
-	return t.FetchResults(q)
+	return t.FetchResults(q, isRetry)
 }
 
-func (t *Table) ParallelScan(attributeComparisons []AttributeComparison, segment int, totalSegments int) ([]map[string]*Attribute, error) {
+func (t *Table) ParallelScan(attributeComparisons []AttributeComparison, segment int, totalSegments int, isRetry bool) ([]map[string]*Attribute, error) {
 	q := NewQuery(t)
 	q.AddScanFilter(attributeComparisons)
 	q.AddParallelScanConfiguration(segment, totalSegments)
-	return t.FetchResults(q)
+	return t.FetchResults(q, isRetry)
 }
 
 func parseKey(t *Table, s map[string]interface{}) *Key {

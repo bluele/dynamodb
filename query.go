@@ -39,7 +39,7 @@ func (t *Table) CountQuery(attributeComparisons []AttributeComparison, isRetry b
 	q := NewQuery(t)
 	q.AddKeyConditions(attributeComparisons)
 	q.AddSelect("COUNT")
-	jsonResponse, err := t.Server.queryServer("DynamoDB_20120810.Query", q)
+	jsonResponse, err := t.Server.queryServer("DynamoDB_20120810.Query", q, isRetry)
 	if err != nil {
 		return 0, err
 	}

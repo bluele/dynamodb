@@ -117,26 +117,27 @@ func (s *Server) NewTable(name string, key PrimaryKey) *Table {
 	return &Table{s, name, key}
 }
 
-func (s *Server) ListTables() ([]string, error) {
+func (s *Server) ListTables(isRetry bool) ([]string, error) {
 	var tables []string
 
 	err := s.ListTablesCallbackIterator(
 		func(t string) {
 			tables = append(tables, t)
 		},
+		isRetry,
 	)
 
 	return tables, err
 }
 
-func (s *Server) ListTablesCallbackIterator(cb func(string)) error {
+func (s *Server) ListTablesCallbackIterator(cb func(string), isRetry bool) error {
 	var lastEvaluatedTableName string
 
 	for {
 		query := NewEmptyQuery()
 		query.AddExclusiveStartTableName(lastEvaluatedTableName)
 
-		jsonResponse, err := s.queryServer(target("ListTables"), query)
+		jsonResponse, err := s.queryServer(target("ListTables"), query, isRetry)
 		if err != nil {
 			return err
 		}
@@ -175,11 +176,11 @@ func (s *Server) ListTablesCallbackIterator(cb func(string)) error {
 
 }
 
-func (s *Server) CreateTable(tableDescription TableDescriptionT) (string, error) {
+func (s *Server) CreateTable(tableDescription TableDescriptionT, isRetry bool) (string, error) {
 	query := NewEmptyQuery()
 	query.AddCreateRequestTable(tableDescription)
 
-	jsonResponse, err := s.queryServer(target("CreateTable"), query)
+	jsonResponse, err := s.queryServer(target("CreateTable"), query, isRetry)
 
 	if err != nil {
 		return "unknown", err
@@ -194,11 +195,11 @@ func (s *Server) CreateTable(tableDescription TableDescriptionT) (string, error)
 	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
 }
 
-func (s *Server) DeleteTable(tableDescription TableDescriptionT) (string, error) {
+func (s *Server) DeleteTable(tableDescription TableDescriptionT, isRetry bool) (string, error) {
 	query := NewEmptyQuery()
 	query.AddDeleteRequestTable(tableDescription)
 
-	jsonResponse, err := s.queryServer(target("DeleteTable"), query)
+	jsonResponse, err := s.queryServer(target("DeleteTable"), query, isRetry)
 
 	if err != nil {
 		return "unknown", err
@@ -213,15 +214,15 @@ func (s *Server) DeleteTable(tableDescription TableDescriptionT) (string, error)
 	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
 }
 
-func (t *Table) DescribeTable() (*TableDescriptionT, error) {
-	return t.Server.DescribeTable(t.Name)
+func (t *Table) DescribeTable(isRetry bool) (*TableDescriptionT, error) {
+	return t.Server.DescribeTable(t.Name, isRetry)
 }
 
-func (s *Server) DescribeTable(name string) (*TableDescriptionT, error) {
+func (s *Server) DescribeTable(name string, isRetry bool) (*TableDescriptionT, error) {
 	q := NewEmptyQuery()
 	q.addTableByName(name)
 
-	jsonResponse, err := s.queryServer(target("DescribeTable"), q)
+	jsonResponse, err := s.queryServer(target("DescribeTable"), q, isRetry)
 	if err != nil {
 		return nil, err
 	}

@@ -31,7 +31,7 @@ func (s *DynamoDBTest) TearDownTest(c *check.C) {
 		c.Fatal(err)
 	}
 
-	attrs, err := s.table.Scan(nil)
+	attrs, err := s.table.Scan(nil, false)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func (s *DynamoDBTest) TearDownTest(c *check.C) {
 		if pk.HasRange() {
 			key.RangeKey = a[pk.RangeAttribute.Name].Value
 		}
-		if ok, err := s.table.DeleteItem(key); !ok {
+		if ok, err := s.table.DeleteItem(key, false); !ok {
 			c.Fatal(err)
 		}
 	}
@@ -55,7 +55,7 @@ func (s *DynamoDBTest) TearDownSuite(c *check.C) {
 	}
 
 	// check whether the table exists
-	if tables, err := s.server.ListTables(); err != nil {
+	if tables, err := s.server.ListTables(false); err != nil {
 		c.Fatal(err)
 	} else {
 		if !findTableByName(tables, s.TableDescriptionT.TableName) {
@@ -64,7 +64,7 @@ func (s *DynamoDBTest) TearDownSuite(c *check.C) {
 	}
 
 	// Delete the table and wait
-	if _, err := s.server.DeleteTable(s.TableDescriptionT); err != nil {
+	if _, err := s.server.DeleteTable(s.TableDescriptionT, false); err != nil {
 		c.Fatal(err)
 	}
 
@@ -76,7 +76,7 @@ func (s *DynamoDBTest) TearDownSuite(c *check.C) {
 			case <-done:
 				return
 			default:
-				tables, err := s.server.ListTables()
+				tables, err := s.server.ListTables(false)
 				if err != nil {
 					c.Fatal(err)
 				}
@@ -108,7 +108,7 @@ func (s *DynamoDBTest) WaitUntilStatus(c *check.C, status string) {
 			case <-done:
 				return
 			default:
-				desc, err := s.table.DescribeTable()
+				desc, err := s.table.DescribeTable(false)
 				if err != nil {
 					c.Fatal(err)
 				}

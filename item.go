@@ -44,11 +44,11 @@ func (batchWriteItem *BatchWriteItem) AddTable(t *Table, itemActions *map[string
 	return batchWriteItem
 }
 
-func (batchGetItem *BatchGetItem) Execute() (map[string][]map[string]*Attribute, error) {
+func (batchGetItem *BatchGetItem) Execute(isRetry bool) (map[string][]map[string]*Attribute, error) {
 	q := NewEmptyQuery()
 	q.AddGetRequestItems(batchGetItem.Keys)
 
-	jsonResponse, err := batchGetItem.Server.queryServer("DynamoDB_20120810.BatchGetItem", q)
+	jsonResponse, err := batchGetItem.Server.queryServer("DynamoDB_20120810.BatchGetItem", q, isRetry)
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +93,11 @@ func (batchGetItem *BatchGetItem) Execute() (map[string][]map[string]*Attribute,
 	return results, nil
 }
 
-func (batchWriteItem *BatchWriteItem) Execute() (map[string]interface{}, error) {
+func (batchWriteItem *BatchWriteItem) Execute(isRetry bool) (map[string]interface{}, error) {
 	q := NewEmptyQuery()
 	q.AddWriteRequestItems(batchWriteItem.ItemActions)
 
-	jsonResponse, err := batchWriteItem.Server.queryServer("DynamoDB_20120810.BatchWriteItem", q)
+	jsonResponse, err := batchWriteItem.Server.queryServer("DynamoDB_20120810.BatchWriteItem", q, isRetry)
 
 	if err != nil {
 		return nil, err
@@ -123,15 +123,15 @@ func (batchWriteItem *BatchWriteItem) Execute() (map[string]interface{}, error) 
 
 }
 
-func (t *Table) GetItem(key *Key) (map[string]*Attribute, error) {
-	return t.getItem(key, false)
+func (t *Table) GetItem(key *Key, isRetry bool) (map[string]*Attribute, error) {
+	return t.getItem(key, false, isRetry)
 }
 
-func (t *Table) GetItemConsistent(key *Key, consistentRead bool) (map[string]*Attribute, error) {
-	return t.getItem(key, consistentRead)
+func (t *Table) GetItemConsistent(key *Key, consistentRead bool, isRetry bool) (map[string]*Attribute, error) {
+	return t.getItem(key, consistentRead, isRetry)
 }
 
-func (t *Table) getItem(key *Key, consistentRead bool) (map[string]*Attribute, error) {
+func (t *Table) getItem(key *Key, consistentRead bool, isRetry bool) (map[string]*Attribute, error) {
 	q := NewQuery(t)
 	q.AddKey(t, key)
 
@@ -139,7 +139,7 @@ func (t *Table) getItem(key *Key, consistentRead bool) (map[string]*Attribute, e
 		q.ConsistentRead(consistentRead)
 	}
 
-	jsonResponse, err := t.Server.queryServer(target("GetItem"), q)
+	jsonResponse, err := t.Server.queryServer(target("GetItem"), q, isRetry)
 	if err != nil {
 		return nil, err
 	}
@@ -165,15 +165,15 @@ func (t *Table) getItem(key *Key, consistentRead bool) (map[string]*Attribute, e
 
 }
 
-func (t *Table) PutItem(hashKey string, rangeKey string, attributes []Attribute) (bool, error) {
-	return t.putItem(hashKey, rangeKey, attributes, nil)
+func (t *Table) PutItem(hashKey string, rangeKey string, attributes []Attribute, isRetry bool) (bool, error) {
+	return t.putItem(hashKey, rangeKey, attributes, nil, isRetry)
 }
 
-func (t *Table) ConditionalPutItem(hashKey, rangeKey string, attributes, expected []Attribute) (bool, error) {
-	return t.putItem(hashKey, rangeKey, attributes, expected)
+func (t *Table) ConditionalPutItem(hashKey, rangeKey string, attributes, expected []Attribute, isRetry bool) (bool, error) {
+	return t.putItem(hashKey, rangeKey, attributes, expected, isRetry)
 }
 
-func (t *Table) putItem(hashKey, rangeKey string, attributes, expected []Attribute) (bool, error) {
+func (t *Table) putItem(hashKey, rangeKey string, attributes, expected []Attribute, isRetry bool) (bool, error) {
 	if len(attributes) == 0 {
 		return false, errors.New("At least one attribute is required.")
 	}
@@ -194,7 +194,7 @@ func (t *Table) putItem(hashKey, rangeKey string, attributes, expected []Attribu
 	// http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ErrorHandling.html#APIRetries
 	currentRetry := uint(0)
 	for {
-		jsonResponse, err = t.Server.queryServer(target("PutItem"), q)
+		jsonResponse, err = t.Server.queryServer(target("PutItem"), q, isRetry)
 		if currentRetry >= maxNumberOfRetry {
 			break
 		}
@@ -230,7 +230,7 @@ func (t *Table) putItem(hashKey, rangeKey string, attributes, expected []Attribu
 	return true, nil
 }
 
-func (t *Table) deleteItem(key *Key, expected []Attribute) (bool, error) {
+func (t *Table) deleteItem(key *Key, expected []Attribute, isRetry bool) (bool, error) {
 	q := NewQuery(t)
 	q.AddKey(t, key)
 
@@ -238,7 +238,7 @@ func (t *Table) deleteItem(key *Key, expected []Attribute) (bool, error) {
 		q.AddExpected(expected)
 	}
 
-	jsonResponse, err := t.Server.queryServer(target("DeleteItem"), q)
+	jsonResponse, err := t.Server.queryServer(target("DeleteItem"), q, isRetry)
 
 	if err != nil {
 		return false, err
@@ -252,39 +252,39 @@ func (t *Table) deleteItem(key *Key, expected []Attribute) (bool, error) {
 	return true, nil
 }
 
-func (t *Table) DeleteItem(key *Key) (bool, error) {
-	return t.deleteItem(key, nil)
+func (t *Table) DeleteItem(key *Key, isRetry bool) (bool, error) {
+	return t.deleteItem(key, nil, isRetry)
 }
 
-func (t *Table) ConditionalDeleteItem(key *Key, expected []Attribute) (bool, error) {
-	return t.deleteItem(key, expected)
+func (t *Table) ConditionalDeleteItem(key *Key, expected []Attribute, isRetry bool) (bool, error) {
+	return t.deleteItem(key, expected, isRetry)
 }
 
-func (t *Table) AddAttributes(key *Key, attributes []Attribute) (bool, error) {
-	return t.modifyAttributes(key, attributes, nil, "ADD")
+func (t *Table) AddAttributes(key *Key, attributes []Attribute, isRetry bool) (bool, error) {
+	return t.modifyAttributes(key, attributes, nil, "ADD", isRetry)
 }
 
-func (t *Table) UpdateAttributes(key *Key, attributes []Attribute) (bool, error) {
-	return t.modifyAttributes(key, attributes, nil, "PUT")
+func (t *Table) UpdateAttributes(key *Key, attributes []Attribute, isRetry bool) (bool, error) {
+	return t.modifyAttributes(key, attributes, nil, "PUT", isRetry)
 }
 
-func (t *Table) DeleteAttributes(key *Key, attributes []Attribute) (bool, error) {
-	return t.modifyAttributes(key, attributes, nil, "DELETE")
+func (t *Table) DeleteAttributes(key *Key, attributes []Attribute, isRetry bool) (bool, error) {
+	return t.modifyAttributes(key, attributes, nil, "DELETE", isRetry)
 }
 
-func (t *Table) ConditionalAddAttributes(key *Key, attributes, expected []Attribute) (bool, error) {
-	return t.modifyAttributes(key, attributes, expected, "ADD")
+func (t *Table) ConditionalAddAttributes(key *Key, attributes, expected []Attribute, isRetry bool) (bool, error) {
+	return t.modifyAttributes(key, attributes, expected, "ADD", isRetry)
 }
 
-func (t *Table) ConditionalUpdateAttributes(key *Key, attributes, expected []Attribute) (bool, error) {
-	return t.modifyAttributes(key, attributes, expected, "PUT")
+func (t *Table) ConditionalUpdateAttributes(key *Key, attributes, expected []Attribute, isRetry bool) (bool, error) {
+	return t.modifyAttributes(key, attributes, expected, "PUT", isRetry)
 }
 
-func (t *Table) ConditionalDeleteAttributes(key *Key, attributes, expected []Attribute) (bool, error) {
-	return t.modifyAttributes(key, attributes, expected, "DELETE")
+func (t *Table) ConditionalDeleteAttributes(key *Key, attributes, expected []Attribute, isRetry bool) (bool, error) {
+	return t.modifyAttributes(key, attributes, expected, "DELETE", isRetry)
 }
 
-func (t *Table) modifyAttributes(key *Key, attributes, expected []Attribute, action string) (bool, error) {
+func (t *Table) modifyAttributes(key *Key, attributes, expected []Attribute, action string, isRetry bool) (bool, error) {
 
 	if len(attributes) == 0 {
 		return false, errors.New("At least one attribute is required.")
@@ -298,7 +298,7 @@ func (t *Table) modifyAttributes(key *Key, attributes, expected []Attribute, act
 		q.AddExpected(expected)
 	}
 
-	jsonResponse, err := t.Server.queryServer(target("UpdateItem"), q)
+	jsonResponse, err := t.Server.queryServer(target("UpdateItem"), q, isRetry)
 
 	if err != nil {
 		return false, err

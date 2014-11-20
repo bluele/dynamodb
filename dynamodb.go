@@ -118,8 +118,12 @@ func (s *Server) rawQueryServer(target string, query string, retryCount int) ([]
 	return body, nil
 }
 
-func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
-	return s.rawQueryServer(target, query.String(), 0)
+func (s *Server) queryServer(target string, query *Query, isRetry bool) ([]byte, error) {
+	var retryCount = 0
+	if !isRetry {
+		retryCount = -1
+	}
+	return s.rawQueryServer(target, query.String(), retryCount)
 }
 
 func target(name string) string {

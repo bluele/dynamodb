@@ -78,7 +78,7 @@ var table_suite_gsi = &TableSuite{
 }
 
 func (s *TableSuite) TestCreateListTableGsi(c *check.C) {
-	status, err := s.server.CreateTable(s.TableDescriptionT)
+	status, err := s.server.CreateTable(s.TableDescriptionT, false)
 	if err != nil {
 		fmt.Printf("err %#v", err)
 		c.Fatal(err)
@@ -89,7 +89,7 @@ func (s *TableSuite) TestCreateListTableGsi(c *check.C) {
 
 	s.WaitUntilStatus(c, "ACTIVE")
 
-	tables, err := s.server.ListTables()
+	tables, err := s.server.ListTables(false)
 	if err != nil {
 		c.Fatal(err)
 	}

@@ -23,7 +23,7 @@ func (s *ItemSuite) SetUpSuite(c *check.C) {
 
 	// Cleanup
 	s.TearDownSuite(c)
-	_, err = s.server.CreateTable(s.TableDescriptionT)
+	_, err = s.server.CreateTable(s.TableDescriptionT, false)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func (s *ItemSuite) TestConditionalAddAttributesItem(c *check.C) {
 	pk := &dynamodb.Key{HashKey: "NewHashKeyVal"}
 
 	// Put
-	if ok, err := s.table.PutItem("NewHashKeyVal", "", attrs); !ok {
+	if ok, err := s.table.PutItem("NewHashKeyVal", "", attrs, false); !ok {
 		c.Fatal(err)
 	}
 
@@ -92,7 +92,7 @@ func (s *ItemSuite) TestConditionalAddAttributesItem(c *check.C) {
 			*dynamodb.NewStringAttribute("AttrNotExists", "").SetExists(false),
 		}
 		// Add attributes with condition failed
-		if ok, err := s.table.ConditionalAddAttributes(pk, attrs, expected); ok {
+		if ok, err := s.table.ConditionalAddAttributes(pk, attrs, expected, false); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
 			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
@@ -113,7 +113,7 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 	pk := &dynamodb.Key{HashKey: "NewHashKeyVal"}
 
 	// Put
-	if ok, err := s.table.PutItem("NewHashKeyVal", "", attrs); !ok {
+	if ok, err := s.table.PutItem("NewHashKeyVal", "", attrs, false); !ok {
 		c.Fatal(err)
 	}
 
@@ -123,21 +123,21 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 			*dynamodb.NewStringAttribute("Attr1", "expectedAttr1Val").SetExists(true),
 			*dynamodb.NewStringAttribute("AttrNotExists", "").SetExists(false),
 		}
-		if ok, err := s.table.ConditionalPutItem("NewHashKeyVal", "", attrs, expected); ok {
+		if ok, err := s.table.ConditionalPutItem("NewHashKeyVal", "", attrs, expected, false); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
 			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
 		}
 
 		// Update attributes with condition failed
-		if ok, err := s.table.ConditionalUpdateAttributes(pk, attrs, expected); ok {
+		if ok, err := s.table.ConditionalUpdateAttributes(pk, attrs, expected, false); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
 			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
 		}
 
 		// Delete attributes with condition failed
-		if ok, err := s.table.ConditionalDeleteAttributes(pk, attrs, expected); ok {
+		if ok, err := s.table.ConditionalDeleteAttributes(pk, attrs, expected, false); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
 			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
@@ -154,7 +154,7 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 			*dynamodb.NewNumericAttribute("AddNewAttr1", "10"),
 			*dynamodb.NewNumericAttribute("AddNewAttr2", "20"),
 		}
-		if ok, err := s.table.ConditionalAddAttributes(pk, addNewAttrs, nil); !ok {
+		if ok, err := s.table.ConditionalAddAttributes(pk, addNewAttrs, nil, false); !ok {
 			c.Errorf("Expect condition met. %s", err)
 		}
 
@@ -162,7 +162,7 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 		updateAttrs := []dynamodb.Attribute{
 			*dynamodb.NewNumericAttribute("AddNewAttr1", "100"),
 		}
-		if ok, err := s.table.ConditionalUpdateAttributes(pk, updateAttrs, expected); !ok {
+		if ok, err := s.table.ConditionalUpdateAttributes(pk, updateAttrs, expected, false); !ok {
 			c.Errorf("Expect condition met. %s", err)
 		}
 
@@ -170,12 +170,12 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 		deleteAttrs := []dynamodb.Attribute{
 			*dynamodb.NewNumericAttribute("AddNewAttr2", ""),
 		}
-		if ok, err := s.table.ConditionalDeleteAttributes(pk, deleteAttrs, expected); !ok {
+		if ok, err := s.table.ConditionalDeleteAttributes(pk, deleteAttrs, expected, false); !ok {
 			c.Errorf("Expect condition met. %s", err)
 		}
 
 		// Get to verify operations that condition are met
-		item, err := s.table.GetItem(pk)
+		item, err := s.table.GetItem(pk, false)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -199,12 +199,12 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 		newattrs := []dynamodb.Attribute{
 			*dynamodb.NewStringAttribute("Attr1", "Attr2Val"),
 		}
-		if ok, err := s.table.ConditionalPutItem("NewHashKeyVal", "", newattrs, expected); !ok {
+		if ok, err := s.table.ConditionalPutItem("NewHashKeyVal", "", newattrs, expected, false); !ok {
 			c.Errorf("Expect condition met. %s", err)
 		}
 
 		// Get to verify Put operation that condition are met
-		item, err := s.table.GetItem(pk)
+		item, err := s.table.GetItem(pk, false)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -221,7 +221,7 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 		expected := []dynamodb.Attribute{
 			*dynamodb.NewStringAttribute("Attr1", "expectedAttr1Val").SetExists(true),
 		}
-		if ok, err := s.table.ConditionalDeleteItem(pk, expected); ok {
+		if ok, err := s.table.ConditionalDeleteItem(pk, expected, false); ok {
 			c.Errorf("Expect condition does not meet.")
 		} else {
 			c.Check(err.Error(), check.Matches, "ConditionalCheckFailedException.*")
@@ -233,12 +233,12 @@ func (s *ItemSuite) TestConditionalPutUpdateDeleteItem(c *check.C) {
 		expected := []dynamodb.Attribute{
 			*dynamodb.NewStringAttribute("Attr1", "Attr2Val").SetExists(true),
 		}
-		if ok, _ := s.table.ConditionalDeleteItem(pk, expected); !ok {
+		if ok, _ := s.table.ConditionalDeleteItem(pk, expected, false); !ok {
 			c.Errorf("Expect condition met.")
 		}
 
 		// Get to verify Delete operation
-		_, err := s.table.GetItem(pk)
+		_, err := s.table.GetItem(pk, false)
 		c.Check(err.Error(), check.Matches, "Item not found")
 	}
 }
@@ -254,13 +254,13 @@ func (s *ItemSuite) TestPutGetDeleteItem(c *check.C) {
 	}
 
 	// Put
-	if ok, err := s.table.PutItem("NewHashKeyVal", rk, attrs); !ok {
+	if ok, err := s.table.PutItem("NewHashKeyVal", rk, attrs, false); !ok {
 		c.Fatal(err)
 	}
 
 	// Get to verify Put operation
 	pk := &dynamodb.Key{HashKey: "NewHashKeyVal", RangeKey: rk}
-	item, err := s.table.GetItem(pk)
+	item, err := s.table.GetItem(pk, false)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -280,12 +280,12 @@ func (s *ItemSuite) TestPutGetDeleteItem(c *check.C) {
 	}
 
 	// Delete
-	if ok, _ := s.table.DeleteItem(pk); !ok {
+	if ok, _ := s.table.DeleteItem(pk, false); !ok {
 		c.Fatal(err)
 	}
 
 	// Get to verify Delete operation
-	_, err = s.table.GetItem(pk)
+	_, err = s.table.GetItem(pk, false)
 	c.Check(err.Error(), check.Matches, "Item not found")
 }
 
@@ -299,7 +299,7 @@ func (s *ItemSuite) TestUpdateItem(c *check.C) {
 		rk = "1"
 	}
 
-	if ok, err := s.table.PutItem("NewHashKeyVal", rk, attrs); !ok {
+	if ok, err := s.table.PutItem("NewHashKeyVal", rk, attrs, false); !ok {
 		c.Fatal(err)
 	}
 
@@ -308,12 +308,12 @@ func (s *ItemSuite) TestUpdateItem(c *check.C) {
 		*dynamodb.NewNumericAttribute("count", "10"),
 	}
 	pk := &dynamodb.Key{HashKey: "NewHashKeyVal", RangeKey: rk}
-	if ok, err := s.table.AddAttributes(pk, attrs); !ok {
+	if ok, err := s.table.AddAttributes(pk, attrs, false); !ok {
 		c.Error(err)
 	}
 
 	// Get to verify Add operation
-	if item, err := s.table.GetItemConsistent(pk, true); err != nil {
+	if item, err := s.table.GetItemConsistent(pk, true, false); err != nil {
 		c.Error(err)
 	} else {
 		if val, ok := item["count"]; ok {
@@ -327,12 +327,12 @@ func (s *ItemSuite) TestUpdateItem(c *check.C) {
 	attrs = []dynamodb.Attribute{
 		*dynamodb.NewNumericAttribute("count", "100"),
 	}
-	if ok, err := s.table.UpdateAttributes(pk, attrs); !ok {
+	if ok, err := s.table.UpdateAttributes(pk, attrs, false); !ok {
 		c.Error(err)
 	}
 
 	// Get to verify Put operation
-	if item, err := s.table.GetItem(pk); err != nil {
+	if item, err := s.table.GetItem(pk, false); err != nil {
 		c.Fatal(err)
 	} else {
 		if val, ok := item["count"]; ok {
@@ -346,12 +346,12 @@ func (s *ItemSuite) TestUpdateItem(c *check.C) {
 	attrs = []dynamodb.Attribute{
 		*dynamodb.NewNumericAttribute("count", ""),
 	}
-	if ok, err := s.table.DeleteAttributes(pk, attrs); !ok {
+	if ok, err := s.table.DeleteAttributes(pk, attrs, false); !ok {
 		c.Error(err)
 	}
 
 	// Get to verify Delete operation
-	if item, err := s.table.GetItem(pk); err != nil {
+	if item, err := s.table.GetItem(pk, false); err != nil {
 		c.Error(err)
 	} else {
 		if _, ok := item["count"]; ok {
@@ -370,7 +370,7 @@ func (s *ItemSuite) TestUpdateItemWithSet(c *check.C) {
 		rk = "1"
 	}
 
-	if ok, err := s.table.PutItem("NewHashKeyVal", rk, attrs); !ok {
+	if ok, err := s.table.PutItem("NewHashKeyVal", rk, attrs, false); !ok {
 		c.Error(err)
 	}
 
@@ -379,12 +379,12 @@ func (s *ItemSuite) TestUpdateItemWithSet(c *check.C) {
 		*dynamodb.NewStringSetAttribute("list", []string{"C"}),
 	}
 	pk := &dynamodb.Key{HashKey: "NewHashKeyVal", RangeKey: rk}
-	if ok, err := s.table.AddAttributes(pk, attrs); !ok {
+	if ok, err := s.table.AddAttributes(pk, attrs, false); !ok {
 		c.Error(err)
 	}
 
 	// Get to verify Add operation
-	if item, err := s.table.GetItem(pk); err != nil {
+	if item, err := s.table.GetItem(pk, false); err != nil {
 		c.Error(err)
 	} else {
 		if val, ok := item["list"]; ok {
@@ -398,12 +398,12 @@ func (s *ItemSuite) TestUpdateItemWithSet(c *check.C) {
 	attrs = []dynamodb.Attribute{
 		*dynamodb.NewStringSetAttribute("list", []string{"A"}),
 	}
-	if ok, err := s.table.DeleteAttributes(pk, attrs); !ok {
+	if ok, err := s.table.DeleteAttributes(pk, attrs, false); !ok {
 		c.Error(err)
 	}
 
 	// Get to verify Delete operation
-	if item, err := s.table.GetItem(pk); err != nil {
+	if item, err := s.table.GetItem(pk, false); err != nil {
 		c.Error(err)
 	} else {
 		if val, ok := item["list"]; ok {
