@@ -107,7 +107,7 @@ func (s *Server) rawQueryServer(target string, query string, retryCount int) ([]
 		if ddbErr.Code == ProvisionedThroughputExceeded {
 			retryCount += 1
 			log.Printf("Retry query: %v.", query)
-			time.Sleep(retryCount * time.Second)
+			time.Sleep(time.Duration(retryCount) * time.Second)
 			return s.rawQueryServer(target, query, retryCount)
 		}
 		return nil, ddbErr

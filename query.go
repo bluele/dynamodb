@@ -57,7 +57,7 @@ func (t *Table) CountQuery(attributeComparisons []AttributeComparison) (int64, e
 }
 
 func (t *Table) RawQueryTable(query string, target string) ([]map[string]*Attribute, *Key, error) {
-	jsonResponse, err := t.Server.rawQueryServer("DynamoDB_20120810."+target, query)
+	jsonResponse, err := t.Server.rawQueryServer("DynamoDB_20120810."+target, query, 0)
 	if err != nil {
 		return nil, nil, err
 	}
